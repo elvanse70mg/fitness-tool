@@ -181,12 +181,15 @@ Nutze genau dieses Format:
         st.write(response.choices[0].message.content)
 
         #Speichern
-        mahlzeiten = json.loads(response.choices[0].message.content)
-        for mahlzeit in mahlzeiten:
-            mahlzeit["abgehakt"] = False
-            daten["ernaehrung"]["mahlzeiten"].append(mahlzeit)
-        speichere_daten(daten)
-        st.rerun()
+        try:
+            mahlzeiten = json.loads(response.choices[0].message.content)
+            for mahlzeit in mahlzeiten:
+                mahlzeit["abgehakt"] = False
+                daten["ernaehrung"]["mahlzeiten"].append(mahlzeit)
+            speichere_daten(daten)
+            st.rerun()
+        except json.JSONDecodeError:
+            st.error("Fehler beim Verarbeiten der Antwort. Bitte versuche es erneut.")
 
 
 
@@ -198,11 +201,12 @@ elif seite == "💪 Training":
     
     for index, uebung in enumerate(daten["training"]["einheiten"]):
         if uebung["abgehakt"]:
-            st.success(f"{uebung['name']} – {uebung['saetze']} Sätze x {uebung['uebung']} Wdh")
-            trainings_einheiten_summe += uebung["uebung"]
+            st.success(f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh")
+            trainings_einheiten_summe += uebung.get("wiederholungen", uebung.get("uebung", 0))
             
         else:
-            if st.checkbox(uebung["name"], key=f"check_training_{index}"):
+            label = f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh"
+            if st.checkbox(label, key=f"check_training_{index}"):
                 uebung["abgehakt"] = True
                 speichere_daten(daten)
                 st.rerun()
@@ -226,7 +230,54 @@ elif seite == "💪 Training":
         st.rerun()
 
 
+    ##Trainingsplan erstellen mit AI
+    st.subheader("🤖 KI Trainingsplan")
 
+    geraete = st.multiselect("Welche Geräte hast du zur Verfügung?", ["Laufband", "Rudergerät", "Klimmzugstange", "Hantelbank", "Kurzhanteln", "Langhantel", "Kabelzug", "Kettlebell", "Bodyweight"])
+
+    trainingstage = st.number_input("Wie viele Tage pro Woche möchtest du trainieren?", min_value=1, max_value=7, value=3)
+
+    fokus = st.radio("Was ist dein Trainingsfokus?", ["Kraft", "Ausdauer", "Ausdauer und Kraft"])
+
+    erfahrung = st.radio("Wie ist dein Trainingslevel?", ["Anfänger", "Fortgeschritten", "Experte"])
+
+    trainingszeit = st.number_input("Wie viele Minuten pro Trainingseinheit?", min_value=10, max_value=180, value=60)
+
+
+    if st.button("🏋️‍♂️ Trainingsplan generieren"):
+        prompt = f"""
+        Ich habe folgende Geräte zur Verfügung: {', '.join(geraete)}.
+        Ich möchte {trainingstage} Tage pro Woche trainieren.
+        Mein Trainingsfokus ist {fokus}.
+        Mein Trainingslevel ist {erfahrung}.
+        Jede Trainingseinheit soll ungefähr {trainingszeit} Minuten dauern.
+        Bitte erstelle mir einen Trainingsplan für eine Woche. 
+        Gib mir für jeden Tag die Übungen mit Name, Anzahl der Wiederholungen und Sätze an.
+        Antworte AUSSCHLIESSLICH mit einem JSON-Array ohne weitere Erklärungen oder Text.
+        Nutze genau dieses Format: 
+           [
+      {{"tag": "Montag", "name": "Übungsname", "saetze": 0, "wiederholungen": 0}},
+      ...
+    ]
+        """
+
+        ##API Aufruf
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}]
+        )
+
+        ##Speichern mit try/except
+        try:
+            einheiten = json.loads(response.choices[0].message.content)
+            for einheit in einheiten:
+                einheit["abgehakt"] = False
+                daten["training"]["einheiten"].append(einheit)
+            speichere_daten(daten)
+            st.rerun()
+        except json.JSONDecodeError:
+            st.error("Fehler beim Generieren des Trainingsplans.")      
 
 
 ##Fortschritt-Seite
