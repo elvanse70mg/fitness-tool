@@ -90,14 +90,6 @@ fitness-tool/
 
 ---
 
-## 👤 Über mich
-
-Ich bin Klaus, 25 Jahre alt aus Arendsee. Ich lerne seit Juni 2026 Python und arbeite auf eine Umschulung zum **Fachinformatiker für Prozess- und Datenanalyse** hin. Mein Ziel ist ein Remote-Job als Python Developer oder ML Engineer.
-
-📫 GitHub: [@elvanse70mg](https://github.com/elvanse70mg)
-
----
-
 ## 📋 Roadmap
 
 - [ ] KI-Trainingsplan Generator
