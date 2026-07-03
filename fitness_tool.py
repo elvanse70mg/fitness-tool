@@ -200,22 +200,23 @@ elif seite == "💪 Training":
     st.subheader("Heutige Trainingseinheiten")
     
     for index, uebung in enumerate(daten["training"]["einheiten"]):
-        if uebung["abgehakt"]:
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.success(f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh")
-            with col2:
-                if st.button("↩️", key=f"undo_training_{index}"):
-                    uebung["abgehakt"] = False
+        if uebung.get("tag", None) == heute_tag:
+            if uebung["abgehakt"]:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.success(f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh")
+                with col2:
+                    if st.button("↩️", key=f"undo_training_{index}"):
+                        uebung["abgehakt"] = False
+                        speichere_daten(daten)
+                        st.rerun()
+                trainings_einheiten_summe += uebung.get("wiederholungen", uebung.get("uebung", 0))
+            else:
+                label = f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh"
+                if st.checkbox(label, key=f"check_training_{index}"):
+                    uebung["abgehakt"] = True
                     speichere_daten(daten)
                     st.rerun()
-            trainings_einheiten_summe += uebung.get("wiederholungen", uebung.get("uebung", 0))
-        else:
-            label = f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh"
-            if st.checkbox(label, key=f"check_training_{index}"):
-                uebung["abgehakt"] = True
-                speichere_daten(daten)
-                st.rerun()
 
     st.metric("Heutige Trainingseinheiten", trainings_einheiten_summe)
 
