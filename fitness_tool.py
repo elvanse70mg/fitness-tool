@@ -72,6 +72,10 @@ if seite == "🍗 Ernährung":
                 col1, col2 = st.columns([4, 1])
                 with col1:
                     st.success(mahlzeit["name"])
+                    ##Zubereitung anzeigen falls vorhanden
+                    if mahlzeit.get("zubereitung"):
+                        with st.expander("📖 Rezept anzeigen"):
+                            st.write(mahlzeit["zubereitung"])
                 with col2:
                     if st.button("↩️", key=f"undo_essen_{index}"):
                         mahlzeit["abgehakt"] = False
@@ -84,6 +88,10 @@ if seite == "🍗 Ernährung":
                     mahlzeit["abgehakt"] = True
                     speichere_daten(daten)
                     st.rerun()
+                ##Zubereitung anzeigen falls vorhanden
+                if mahlzeit.get("zubereitung"):
+                    with st.expander("📖 Rezept anzeigen", key=f"rezept_{index}"):
+                        st.write(mahlzeit["zubereitung"])
 
     st.metric("Heutige Kalorien", kalorien_summe)
     st.metric("Heutige Proteine", protein_summe)
@@ -93,6 +101,7 @@ if seite == "🍗 Ernährung":
     name = st.text_input("Name")
     kalorien = st.number_input("Kalorien")
     protein = st.number_input("Protein")
+    zubereitung = st.text_area("Zubereitung (optional)")
     tag = st.selectbox("Wochentag", tage, index=tage.index(heute_tag))
 
     if st.button("Hinzufügen"):
@@ -101,6 +110,7 @@ if seite == "🍗 Ernährung":
             "kalorien": kalorien,
             "protein": protein,
             "tag": tag,
+            "zubereitung": zubereitung,
             "abgehakt": False
         }
         daten["ernaehrung"]["mahlzeiten"].append(neue_mahlzeit)
@@ -113,19 +123,12 @@ if seite == "🍗 Ernährung":
     ##Nutzereingaben sammeln
     budget = st.number_input("Wochenbudget (€)", value=50)
     geschlecht = st.selectbox("Geschlecht", ["Mann", "Frau"])
-    groesse = st.number_input("Größe (cm)", value=172)
+    groesse = st.number_input("Größe (cm)", value=175)
     gewicht_start = st.number_input("Gewicht (kg)", value=78)
     protein_bedarf = gewicht_start * 1.8
 
     ##Ziel
     ziel = st.selectbox("Was ist dein Ziel?", ["Bodyrecomp", "Bulk", "Cut"])
-
-    ##TRT
-    trt = st.checkbox("Bist du in einer Testosteronersatztherapie?")
-    if trt:
-        trt_ester = st.text_input("Welcher Ester?")
-        trt_dosis = st.number_input("Welche Dosis?")
-        trt_haeufigkeit = st.text_input("Wie oft?")
 
     ##Sonstige Medikamente
     weitere_medikamente = st.checkbox("Nimmst du weitere Medikamente ein?")
@@ -149,12 +152,13 @@ if seite == "🍗 Ernährung":
         und benötige eine proteinreiche Ernährung.
         Erstelle mir einen Wochenplan. Mein Ziel ist {ziel}. Bitte gib mir für jeden Tag der Woche 
         ein Gericht mit Name, Kalorien und Protein an. Mein täglicher Proteinbedarf ist {protein_bedarf}.
-        Gebe auch die Zutatenliste für jedes Gericht an. Kategorisiere die Zutaten in Kategorien: Fleisch/Fisch, Gemüse, Kohlenhydrate, Milchprodukte, Gewürze/Öle, Sonstiges.
+        Gebe auch die Zutatenliste und eine kurze Zubereitung für jedes Gericht an.
+        Kategorisiere die Zutaten in Kategorien: Fleisch/Fisch, Gemüse, Kohlenhydrate, Milchprodukte, Gewürze/Öle, Sonstiges.
         Wichtig: Nutze IMMER einen Punkt als Dezimaltrennzeichen, niemals ein Komma (also 0.5 nicht 0,5).
         Antworte AUSSCHLIESSLICH mit einem JSON-Array ohne weitere Erklärungen oder Text.
         Nutze genau dieses Format:
         [
-          {{"tag": "Montag", "name": "Hähnchenbrust", "kalorien": 450, "protein": 35, "zutaten": [
+          {{"tag": "Montag", "name": "Hähnchenbrust", "kalorien": 450, "protein": 35, "zubereitung": "1. Hähnchen würzen. 2. In Pfanne anbraten.", "zutaten": [
             {{"name": "Hähnchenbrust", "menge": 200, "einheit": "g", "kategorie": "Fleisch/Fisch"}},
             {{"name": "Olivenöl", "menge": 1, "einheit": "EL", "kategorie": "Gewürze/Öle"}}
           ]}},
@@ -167,12 +171,6 @@ if seite == "🍗 Ernährung":
             prompt += f"""
             Ich trinke {anzahl_shakes} Proteinshakes pro Tag der Marke {shake_name}.
             Berücksichtige dies im Kalorienziel und erstelle den Plan für die restlichen Mahlzeiten.
-            """
-
-        if trt:
-            prompt += f"""
-            Ich bin in einer Testosteronersatztherapie mit dem Ester {trt_ester} und einer Dosis von {trt_dosis} mg {trt_haeufigkeit}.
-            Berücksichtige dies bei der Erstellung des Ernährungsplans.
             """
 
         if weitere_medikamente:
@@ -329,7 +327,7 @@ elif seite == "💪 Training":
 ##Fortschritt-Seite
 elif seite == "📊 Fortschritt":
     st.subheader("⚖️ Gewicht eintragen")
-    st.write("Alle the way up!")
+    
 
     ##Clear Button
     if st.button("🗑️ Gewichtsverlauf löschen"):
@@ -349,4 +347,7 @@ elif seite == "📊 Fortschritt":
         st.rerun()
 
     df = pd.DataFrame(daten["koerper"]["gewicht"])
-    st.line_chart(df, x="datum", y="gewicht")
+    if not df.empty:
+        st.line_chart(df, x="datum", y="gewicht")
+    else:
+        st.write("Noch keine Gewichtsdaten vorhanden.")
