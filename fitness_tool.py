@@ -14,7 +14,7 @@ food_list = []
 ##json datei laden
 def lade_daten():
     try:
-        with open("daten.json", "r") as f:
+        with open("daten.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {
@@ -25,13 +25,27 @@ def lade_daten():
 
 ##json datei speichern
 def speichere_daten(daten):
-    with open("daten.json", "w") as f:
-        json.dump(daten, f)
+    with open("daten.json", "w", encoding="utf-8") as f:
+        json.dump(daten, f, indent=2, ensure_ascii=False)
 
 daten = lade_daten()
 tage = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 heute_tag = tage[date.today().weekday()]
 heute = str(date.today())
+
+##Migration alter Daten (laeuft einmal, repariert Altlasten)
+migriert = False
+for einheit in daten["training"]["einheiten"]:
+    ##alter Schluessel "uebung" -> "wiederholungen"
+    if "uebung" in einheit and "wiederholungen" not in einheit:
+        einheit["wiederholungen"] = einheit.pop("uebung")
+        migriert = True
+    ##fehlender Wochentag -> auf heute setzen, sonst unsichtbar
+    if "tag" not in einheit:
+        einheit["tag"] = heute_tag
+        migriert = True
+if migriert:
+    speichere_daten(daten)
 
 ##Täglicher Reset
 if daten.get("letztes_datum") != heute:
@@ -90,7 +104,7 @@ if seite == "🍗 Ernährung":
                     st.rerun()
                 ##Zubereitung anzeigen falls vorhanden
                 if mahlzeit.get("zubereitung"):
-                    with st.expander("📖 Rezept anzeigen", key=f"rezept_{index}"):
+                    with st.expander("📖 Rezept anzeigen"):
                         st.write(mahlzeit["zubereitung"])
 
     st.metric("Heutige Kalorien", kalorien_summe)
@@ -98,13 +112,13 @@ if seite == "🍗 Ernährung":
 
     ##Hinzufügen
     st.subheader("➕ Neue Mahlzeit hinzufügen")
-    name = st.text_input("Name")
-    kalorien = st.number_input("Kalorien")
-    protein = st.number_input("Protein")
-    zubereitung = st.text_area("Zubereitung (optional)")
-    tag = st.selectbox("Wochentag", tage, index=tage.index(heute_tag))
+    name = st.text_input("Name", key="name_essen")
+    kalorien = st.number_input("Kalorien", min_value=0, step=1, format="%d", key="kalorien_essen")
+    protein = st.number_input("Protein", min_value=0, step=1, format="%d", key="protein_essen")
+    zubereitung = st.text_area("Zubereitung (optional)", key="zubereitung_essen")
+    tag = st.selectbox("Wochentag", tage, index=tage.index(heute_tag), key="tag_essen")
 
-    if st.button("Hinzufügen"):
+    if st.button("Hinzufügen", key="add_essen"):
         neue_mahlzeit = {
             "name": name,
             "kalorien": kalorien,
@@ -245,15 +259,15 @@ elif seite == "💪 Training":
             if uebung["abgehakt"]:
                 col1, col2 = st.columns([4, 1])
                 with col1:
-                    st.success(f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh")
+                    st.success(f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', '?')} Wdh")
                 with col2:
                     if st.button("↩️", key=f"undo_training_{index}"):
                         uebung["abgehakt"] = False
                         speichere_daten(daten)
                         st.rerun()
-                trainings_einheiten_summe += uebung.get("wiederholungen", uebung.get("uebung", 0))
+                trainings_einheiten_summe += uebung.get("wiederholungen", 0)
             else:
-                label = f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', uebung.get('uebung', '?'))} Wdh"
+                label = f"{uebung['name']} – {uebung.get('saetze', '?')} Sätze x {uebung.get('wiederholungen', '?')} Wdh"
                 if st.checkbox(label, key=f"check_training_{index}"):
                     uebung["abgehakt"] = True
                     speichere_daten(daten)
@@ -263,18 +277,20 @@ elif seite == "💪 Training":
 
     ##Hinzufügen
     st.subheader("➕ Neue Einheit hinzufügen")
-    name = st.text_input("Name")
-    uebung_sum = st.number_input("Wiederholungen")
-    saetze = st.number_input("Saetze")
+    name = st.text_input("Name", key="name_training")
+    wiederholungen = st.number_input("Wiederholungen", min_value=0, step=1, format="%d", key="wdh_training")
+    saetze = st.number_input("Saetze", min_value=0, step=1, format="%d", key="saetze_training")
+    tag = st.selectbox("Wochentag", tage, index=tage.index(heute_tag), key="tag_training")
 
-    if st.button("Hinzufügen"):
-        neue_mahlzeit = {
+    if st.button("Hinzufügen", key="add_training"):
+        neue_einheit = {
             "name": name,
-            "uebung": uebung_sum,
+            "wiederholungen": wiederholungen,
             "saetze": saetze,
+            "tag": tag,
             "abgehakt": False
         }
-        daten["training"]["einheiten"].append(neue_mahlzeit)
+        daten["training"]["einheiten"].append(neue_einheit)
         speichere_daten(daten)
         st.rerun()
 
